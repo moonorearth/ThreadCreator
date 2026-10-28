@@ -143,9 +143,9 @@ async def tag_autocomplete(interaction: discord.Interaction, current: str) -> li
     return matching_tags[:25]
 
 
-# --- 4. CREATE-THREAD COMMAND ---
+# --- 4. CREATETHREAD COMMAND ---
 
-@client.tree.command(name="create-thread", description="Create a media thread with an auto-cropped face thumbnail.")
+@client.tree.command(name="createthread", description="Create a media thread with an auto-cropped face thumbnail.")
 @app_commands.describe(
     image="Upload the face photo",
     title="Thread title (e.g., Tom Holland)",
@@ -153,7 +153,7 @@ async def tag_autocomplete(interaction: discord.Interaction, current: str) -> li
 )
 @app_commands.autocomplete(title=title_autocomplete)
 @app_commands.autocomplete(tag=tag_autocomplete)
-async def create_thread(interaction: discord.Interaction, image: discord.Attachment, title: str, tag: str = None):
+async def createthread(interaction: discord.Interaction, image: discord.Attachment, title: str, tag: str = None):
     await interaction.response.defer(thinking=True)
 
     try:
