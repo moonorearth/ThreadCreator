@@ -47,6 +47,7 @@ def run_web_server():
 # --- 2. DISCORD BOT CONFIGURATION ---
 DISCORD_BOT_TOKEN = os.environ.get("DISCORD_BOT_TOKEN", "")
 ALLOWED_EXTENSIONS = ('.png', '.jpg', '.jpeg', '.webp', '.tiff', '.bmp')
+DEFAULT_FORUM_ID = 1542780525205389372
 
 class UnifiedBot(discord.Client):
     def __init__(self):
@@ -127,6 +128,9 @@ async def title_autocomplete(interaction: discord.Interaction, current: str) -> 
 
 async def tag_autocomplete(interaction: discord.Interaction, current: str) -> list[app_commands.Choice[str]]:
     channel = interaction.channel
+    if not isinstance(channel, discord.ForumChannel) and interaction.guild:
+        channel = interaction.guild.get_channel(DEFAULT_FORUM_ID)
+
     if isinstance(channel, discord.ForumChannel) and channel.available_tags:
         tags = [t.name for t in channel.available_tags]
     else:
@@ -149,15 +153,32 @@ async def tag_autocomplete(interaction: discord.Interaction, current: str) -> li
 @app_commands.describe(
     image="Upload the face photo",
     title="Thread title (e.g., Tom Holland)",
-    tag="Select or type a tag"
+    tag="Select or type a tag",
+    forum="Optional: Choose a specific forum channel (defaults to main forum)"
 )
 @app_commands.autocomplete(title=title_autocomplete)
 @app_commands.autocomplete(tag=tag_autocomplete)
-async def createthread(interaction: discord.Interaction, image: discord.Attachment, title: str, tag: str = None):
+async def createthread(
+    interaction: discord.Interaction, 
+    image: discord.Attachment, 
+    title: str, 
+    tag: str = None, 
+    forum: discord.ForumChannel = None
+):
     await interaction.response.defer(thinking=True)
 
     try:
-        # 1. DUPLICATE CHECK
+        # 1. DETERMINE TARGET FORUM CHANNEL
+        if forum:
+            target_channel = forum
+        else:
+            target_channel = interaction.guild.get_channel(DEFAULT_FORUM_ID) if interaction.guild else None
+
+        if not target_channel or not isinstance(target_channel, discord.ForumChannel):
+            await interaction.followup.send("❌ Error: Target forum channel is invalid or not a Forum channel!")
+            return
+
+        # 2. DUPLICATE CHECK ACROSS THE SERVER
         existing_thread = None
         for guild_channel in interaction.guild.channels:
             if isinstance(guild_channel, (discord.ForumChannel, discord.TextChannel)):
@@ -174,13 +195,13 @@ async def createthread(interaction: discord.Interaction, image: discord.Attachme
             )
             return
 
-        # 2. VALIDATE EXTENSION
+        # 3. VALIDATE EXTENSION
         filename_lower = image.filename.lower()
         if not filename_lower.endswith(ALLOWED_EXTENSIONS):
             await interaction.followup.send("❌ Invalid file type! Please upload a valid image file.")
             return
 
-        # 3. PROCESS THUMBNAIL VIA LOCAL API
+        # 4. PROCESS THUMBNAIL VIA LOCAL API
         image_bytes = await image.read()
         port = int(os.environ.get("PORT", 8080))
         local_api_url = f"http://127.0.0.1:{port}/api/thumb"
@@ -198,36 +219,26 @@ async def createthread(interaction: discord.Interaction, image: discord.Attachme
 
                 result_bytes = await response.read()
 
-        # 4. PREPARE RENAMED FILE
+        # 5. PREPARE RENAMED FILE
         output_filename = f"{title}.png"
         discord_file = discord.File(fp=io.BytesIO(result_bytes), filename=output_filename)
 
-        # 5. CREATE THREAD & POST
-        target_channel = interaction.channel
+        # 6. CREATE THREAD IN THE TARGET FORUM
         description_text = f"Media for {title}..."
+        selected_tag = None
+        if tag:
+            selected_tag = discord.utils.get(target_channel.available_tags, name=tag)
+        tags_to_use = [selected_tag] if selected_tag else []
+        
+        thread_message = await target_channel.create_thread(
+            name=title,
+            content=description_text,
+            file=discord_file,
+            applied_tags=tags_to_use
+        )
+        created_thread = thread_message.thread
 
-        if isinstance(target_channel, discord.ForumChannel):
-            selected_tag = None
-            if tag:
-                selected_tag = discord.utils.get(target_channel.available_tags, name=tag)
-            tags_to_use = [selected_tag] if selected_tag else []
-            
-            thread_message = await target_channel.create_thread(
-                name=title,
-                content=description_text,
-                file=discord_file,
-                applied_tags=tags_to_use
-            )
-            created_thread = thread_message.thread
-        else:
-            thread_message = await target_channel.create_thread(
-                name=title,
-                auto_archive_duration=10080
-            )
-            created_thread = thread_message
-            await created_thread.send(content=description_text, file=discord_file)
-
-        await interaction.followup.send(f"✅ Successfully created thread for **{title}**! Link: {created_thread.jump_url}")
+        await interaction.followup.send(f"✅ Successfully created thread for **{title}** in {target_channel.mention}! Link: {created_thread.jump_url}")
 
     except Exception as e:
         await interaction.followup.send(f"❌ An unexpected error occurred: `{str(e)}`")
