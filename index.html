@@ -1,0 +1,505 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Thread Creator BOT</title>
+    <!-- Sleek Inline SVG Favicon -->
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%236366f1' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><rect x='3' y='3' width='18' height='18' rx='2' ry='2'/><circle cx='12' cy='12' r='3'/><path d='M3 9h2'/><path d='M3 15h2'/><path d='M19 9h2'/><path d='M19 15h2'/></svg>">
+    <style>
+        :root {
+            --bg: #0f172a;
+            --card-bg: #1e293b;
+            --accent: #6366f1;
+            --accent-hover: #4f46e5;
+            --text: #f8fafc;
+            --text-muted: #94a3b8;
+            --border: #334155;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+        }
+
+        body {
+            background-color: var(--bg);
+            color: var(--text);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 800px;
+            background-color: var(--card-bg);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 32px;
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.5);
+        }
+
+        h1 {
+            font-size: 1.75rem;
+            margin-bottom: 8px;
+            text-align: center;
+        }
+
+        p.subtitle {
+            color: var(--text-muted);
+            font-size: 0.95rem;
+            text-align: center;
+            margin-bottom: 24px;
+        }
+
+        .auth-section {
+            margin-bottom: 24px;
+        }
+
+        .auth-section label {
+            display: block;
+            font-size: 0.85rem;
+            color: var(--text-muted);
+            margin-bottom: 6px;
+        }
+
+        .auth-section input {
+            width: 100%;
+            padding: 10px 14px;
+            background: #0f172a;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            color: var(--text);
+            font-size: 0.95rem;
+            outline: none;
+        }
+
+        .auth-section input:focus {
+            border-color: var(--accent);
+        }
+
+        .drop-zone {
+            border: 2px dashed var(--border);
+            border-radius: 12px;
+            padding: 40px 20px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            background: rgba(15, 23, 42, 0.4);
+            outline: none;
+        }
+
+        .drop-zone:hover, .drop-zone:focus, .drop-zone.dragover {
+            border-color: var(--accent);
+            background: rgba(99, 102, 241, 0.05);
+        }
+
+        .drop-zone p {
+            color: var(--text-muted);
+            font-size: 0.95rem;
+        }
+
+        .drop-zone span {
+            color: var(--accent);
+            font-weight: 600;
+        }
+
+        #fileInput {
+            display: none;
+        }
+
+        .actions-row {
+            margin-top: 24px;
+            display: flex;
+            gap: 16px;
+            align-items: flex-start;
+        }
+
+        .filename-group {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .filename-group label {
+            font-size: 0.85rem;
+            color: var(--text-muted);
+            margin-bottom: 6px;
+        }
+
+        .filename-input-container {
+            display: flex;
+            align-items: center;
+            background: #0f172a;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 0 12px;
+        }
+
+        .filename-input-container:focus-within {
+            border-color: var(--accent);
+        }
+
+        .filename-input-container input {
+            flex: 1;
+            padding: 10px 0;
+            background: transparent;
+            border: none;
+            color: var(--text);
+            font-size: 0.95rem;
+            outline: none;
+        }
+
+        .filename-ext {
+            color: var(--text-muted);
+            font-size: 0.95rem;
+            font-weight: 600;
+            user-select: none;
+            padding-left: 4px;
+        }
+
+        .filename-preview-text {
+            font-size: 0.8rem;
+            color: var(--text-muted);
+            margin-top: 6px;
+        }
+
+        .btn-run {
+            background-color: var(--accent);
+            color: white;
+            border: none;
+            padding: 12px 32px;
+            font-size: 1rem;
+            font-weight: 600;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: background-color 0.2s;
+            height: 44px;
+            margin-top: 23px;
+            white-space: nowrap;
+        }
+
+        .btn-run:hover:not(:disabled) {
+            background-color: var(--accent-hover);
+        }
+
+        .btn-run:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .preview-container {
+            display: none;
+            margin-top: 32px;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+
+        @media (max-width: 600px) {
+            .actions-row {
+                flex-direction: column;
+            }
+            .btn-run {
+                width: 100%;
+                margin-top: 0;
+            }
+            .preview-container {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .preview-card {
+            background: #0f172a;
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 16px;
+            text-align: center;
+        }
+
+        .preview-card h3 {
+            font-size: 0.9rem;
+            color: var(--text-muted);
+            margin-bottom: 12px;
+        }
+
+        .preview-card img {
+            width: 100%;
+            aspect-ratio: 1 / 1;
+            object-fit: cover;
+            border-radius: 8px;
+            background: #1e293b;
+        }
+
+        .btn-download {
+            display: inline-block;
+            margin-top: 12px;
+            background: #10b981;
+            color: white;
+            text-decoration: none;
+            padding: 10px 20px;
+            font-size: 0.9rem;
+            font-weight: 600;
+            border-radius: 8px;
+            transition: background 0.2s;
+            cursor: pointer;
+        }
+
+        .btn-download:hover {
+            background: #059669;
+        }
+
+        .error-msg {
+            display: none;
+            margin-top: 16px;
+            padding: 12px;
+            background: rgba(239, 68, 68, 0.1);
+            border: 1px solid #ef4444;
+            border-radius: 8px;
+            color: #fca5a5;
+            font-size: 0.9rem;
+            text-align: center;
+        }
+
+        .spinner {
+            display: none;
+            margin: 20px auto 0;
+            width: 32px;
+            height: 32px;
+            border: 3px solid var(--border);
+            border-top-color: var(--accent);
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>Thread Creator Bot is Online!</h1>
+    <p class="subtitle">Upload or paste (Ctrl+V) an image to generate a centered 1024x1024 face crop.</p>
+
+    <div class="auth-section">
+        <label for="secretKey">API Secret Key (Optional)</label>
+        <input type="text" id="secretKey" value="your-secret-key" placeholder="your-secret-key">
+    </div>
+
+    <div class="drop-zone" id="dropZone" tabindex="0">
+        <p id="dropText">Drag & drop your image here, paste (Ctrl+V), or <span>Browse</span></p>
+        <input type="file" id="fileInput" accept="image/*">
+    </div>
+
+    <div class="actions-row">
+        <div class="filename-group">
+            <label for="filenameInput">Output Filename</label>
+            <div class="filename-input-container">
+                <input type="text" id="filenameInput" placeholder="filename">
+                <span class="filename-ext">.png</span>
+            </div>
+            <span class="filename-preview-text" id="filenamePreviewText">Final: filename.png</span>
+        </div>
+        <button class="btn-run" id="runBtn" disabled>RUN</button>
+    </div>
+
+    <div class="spinner" id="spinner"></div>
+    <div class="error-msg" id="errorMsg"></div>
+
+    <div class="preview-container" id="previewContainer">
+        <div class="preview-card">
+            <h3>Original Image</h3>
+            <img id="origPreview" src="" alt="Original">
+        </div>
+        <div class="preview-card">
+            <h3>1024x1024 Result</h3>
+            <img id="resultPreview" src="" alt="Thumbnail Result">
+            <a id="downloadBtn" class="btn-download" download="filename.png">Download</a>
+        </div>
+    </div>
+</div>
+
+<script>
+    const dropZone = document.getElementById('dropZone');
+    const fileInput = document.getElementById('fileInput');
+    const dropText = document.getElementById('dropText');
+    const runBtn = document.getElementById('runBtn');
+    const secretKeyInput = document.getElementById('secretKey');
+    const filenameInput = document.getElementById('filenameInput');
+    const filenamePreviewText = document.getElementById('filenamePreviewText');
+    const spinner = document.getElementById('spinner');
+    const errorMsg = document.getElementById('errorMsg');
+    const previewContainer = document.getElementById('previewContainer');
+    const origPreview = document.getElementById('origPreview');
+    const resultPreview = document.getElementById('resultPreview');
+    const downloadBtn = document.getElementById('downloadBtn');
+
+    let selectedFile = null;
+
+    function updateFilenameUI() {
+        const rawName = filenameInput.value.trim();
+        const baseName = rawName !== '' ? rawName : 'filename';
+        
+        filenamePreviewText.textContent = `Final: ${baseName}.png`;
+        downloadBtn.download = `${baseName}.png`;
+    }
+
+    filenameInput.addEventListener('input', updateFilenameUI);
+
+    dropZone.addEventListener('click', () => fileInput.click());
+
+    dropZone.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        dropZone.classList.add('dragover');
+    });
+
+    dropZone.addEventListener('dragleave', () => dropZone.classList.remove('dragover'));
+
+    dropZone.addEventListener('drop', (e) => {
+        e.preventDefault();
+        dropZone.classList.remove('dragover');
+        if (e.dataTransfer.files.length > 0) {
+            handleFileSelect(e.dataTransfer.files[0]);
+        }
+    });
+
+    fileInput.addEventListener('change', (e) => {
+        if (e.target.files.length > 0) {
+            handleFileSelect(e.target.files[0]);
+        }
+    });
+
+    // Handle global Ctrl+V / Paste event
+    window.addEventListener('paste', (e) => {
+        const clipboardData = e.clipboardData;
+        if (!clipboardData) return;
+
+        if (clipboardData.files && clipboardData.files.length > 0) {
+            const file = clipboardData.files[0];
+            if (file.type.startsWith('image/')) {
+                handleFileSelect(file);
+                e.preventDefault();
+                return;
+            }
+        }
+
+        const items = clipboardData.items;
+        if (items) {
+            for (let i = 0; i < items.length; i++) {
+                if (items[i].type.indexOf('image') !== -1) {
+                    const blob = items[i].getAsFile();
+                    if (blob) {
+                        const pastedFile = new File([blob], "pasted_image.png", { type: blob.type });
+                        handleFileSelect(pastedFile);
+                        e.preventDefault();
+                        break;
+                    }
+                }
+            }
+        }
+    });
+
+    function handleFileSelect(file) {
+        if (!file.type.startsWith('image/')) {
+            showError('Please select a valid image file.');
+            return;
+        }
+        selectedFile = file;
+        dropText.innerHTML = `Selected: <span>${file.name}</span>`;
+        runBtn.disabled = false;
+        hideError();
+
+        // Extract basename without extension and populate input field
+        const lastDot = file.name.lastIndexOf('.');
+        let baseName = lastDot !== -1 ? file.name.substring(0, lastDot) : file.name;
+        
+        if (baseName === "image" || baseName === "pasted_image") {
+            baseName = "pasted_image";
+        }
+
+        filenameInput.value = baseName;
+        updateFilenameUI();
+
+        // Show original image preview immediately and make the container visible
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            origPreview.src = e.target.result;
+            // Reveal the preview container grid so the original image shows immediately
+            previewContainer.style.display = 'grid';
+            // Hide the result card until 'RUN' is clicked, or keep it visible if preferred. 
+            // Actually, let's keep original visible and result hidden until run:
+            resultPreview.src = "";
+            document.querySelectorAll('.preview-card')[1].style.display = 'none'; // hide result card temporarily until run
+        };
+        reader.readAsDataURL(file);
+    }
+
+    runBtn.addEventListener('click', async () => {
+        if (!selectedFile) return;
+
+        const secretKey = secretKeyInput.value.trim() || 'your-secret-key';
+        
+        const currentBaseName = filenameInput.value.trim() || 'filename';
+        const finalFileToUpload = new File([selectedFile], `${currentBaseName}.png`, { type: selectedFile.type });
+
+        const formData = new FormData();
+        formData.append('file', finalFileToUpload);
+
+        // UI updates
+        runBtn.disabled = true;
+        spinner.style.display = 'block';
+        hideError();
+
+        try {
+            const response = await fetch('/api/thumb', {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${secretKey}`
+                },
+                body: formData
+            });
+
+            if (!response.ok) {
+                let errDetail = 'Failed to generate thumbnail.';
+                try {
+                    const errJson = await response.json();
+                    errDetail = errJson.detail || errDetail;
+                } catch (_) {}
+                throw new Error(errDetail);
+            }
+
+            const blob = await response.blob();
+            const imageUrl = URL.createObjectURL(blob);
+
+            // Make sure result card is visible again
+            document.querySelectorAll('.preview-card')[1].style.display = 'block';
+            resultPreview.src = imageUrl;
+            downloadBtn.href = imageUrl;
+
+            previewContainer.style.display = 'grid';
+        } catch (err) {
+            showError(err.message);
+        } finally {
+            spinner.style.display = 'none';
+            runBtn.disabled = false;
+        }
+    });
+
+    function showError(msg) {
+        errorMsg.textContent = msg;
+        errorMsg.style.display = 'block';
+    }
+
+    function hideError() {
+        errorMsg.style.display = 'none';
+    }
+</script>
+
+</body>
+</html>
