@@ -25,9 +25,9 @@ def get_face_detector(width, height):
     )
 
 def process_image_bytes(image_bytes: bytes) -> bytes:
-    """Advanced pipeline: Scale-invariant detection -> Landmark mapping ->
+    """Advanced pipeline: Resolution guardrail -> Scale-invariant detection -> 
 
-    Proportional framing -> Alpha-aware background blur fill -> 1024x1024 canvas.
+    Landmark mapping -> Proportional framing -> Alpha-aware background blur fill -> 1024x1024 canvas.
     """
     nparr = np.frombuffer(image_bytes, np.uint8)
     image = cv2.imdecode(nparr, cv2.IMREAD_UNCHANGED)
@@ -41,6 +41,13 @@ def process_image_bytes(image_bytes: bytes) -> bytes:
         image = cv2.cvtColor(image, cv2.COLOR_BGR2BGRA)
 
     orig_h, orig_w = image.shape[:2]
+
+    # --- GUARDRAIL: DOWNSCALE MASSIVE INPUTS TO PREVENT MEMORY & CPU HANGS ---
+    max_dim = max(orig_h, orig_w)
+    if max_dim > 2048:
+        scale = 2048 / max_dim
+        image = cv2.resize(image, (int(orig_w * scale), int(orig_h * scale)), interpolation=cv2.INTER_AREA)
+        orig_h, orig_w = image.shape[:2]
 
     # --- STEP 1: SCALE-INVARIANT DETECTION ON RESIZED PREVIEW ---
     scale_factor = DETECTION_SIZE / max(orig_h, orig_w)
@@ -61,7 +68,7 @@ def process_image_bytes(image_bytes: bytes) -> bytes:
     # Select face with highest confidence score
     best_face = max(faces, key=lambda f: f[14])
 
-    # --- STEP 2: MAP LANDMARKS BACK TO ORIGINAL FULL-RESOLUTION ---
+    # --- STEP 2: MAP LANDMARKS BACK TO WORKING RESOLUTION ---
     inv_scale = 1.0 / scale_factor
     rx, ry = float(best_face[4]) * inv_scale, float(best_face[5]) * inv_scale
     lx, ly = float(best_face[6]) * inv_scale, float(best_face[7]) * inv_scale
