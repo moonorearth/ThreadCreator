@@ -1,5 +1,6 @@
 import os
 import io
+import asyncio
 import discord
 from discord import app_commands
 from fastapi import FastAPI, File, UploadFile, Header, HTTPException, Response
@@ -15,6 +16,7 @@ from thumb_processor import process_image_bytes
 app = FastAPI()
 
 API_SECRET_KEY = os.environ.get("API_SECRET_KEY", "your-secret-key")
+processing_lock = asyncio.Lock()  # QUEUE SYSTEM: Ensures images process one by one safely
 
 def verify_token(authorization: str = Header(None)):
     if not authorization or not authorization.startswith("Bearer "):
@@ -31,14 +33,18 @@ def serve_ui():
 @app.post("/api/thumb")
 async def generate_thumbnail(file: UploadFile = File(...), authorization: str = Header(None)):
     verify_token(authorization)
-    try:
-        contents = await file.read()
-        result_bytes = process_image_bytes(contents)
-        return Response(content=result_bytes, media_type="image/png")
-    except ValueError as ve:
-        raise HTTPException(status_code=400, detail=str(ve))
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+    
+    # QUEUE LOCK: Only process one image at a time to protect Render server RAM/CPU
+    async with processing_lock:
+        try:
+            contents = await file.read()
+            # Run CPU-heavy OpenCV processing asynchronously in a background thread
+            result_bytes = await asyncio.to_thread(process_image_bytes, contents)
+            return Response(content=result_bytes, media_type="image/png")
+        except ValueError as ve:
+            raise HTTPException(status_code=400, detail=str(ve))
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=str(e))
 
 def run_web_server():
     port = int(os.environ.get("PORT", 8080))
@@ -201,7 +207,7 @@ async def createthread(
             await interaction.followup.send("❌ Invalid file type! Please upload a valid image file.")
             return
 
-        # 4. PROCESS THUMBNAIL VIA LOCAL API
+        # 4. PROCESS THUMBNAIL VIA LOCAL API (Handled safely by queue lock)
         image_bytes = await image.read()
         port = int(os.environ.get("PORT", 8080))
         local_api_url = f"http://127.0.0.1:{port}/api/thumb"
